@@ -1,13 +1,114 @@
+
+
+# make
+
+```
+root@ubuntu:~/arm/armv8-bare-metal# make
+aarch64-linux-gnu-ld -T linker.ld linker.ld boot.o vector.o exception.o kernel.o gic_v3.o uart.o psw.o aarch64.o timer.o -o kernel.elf
+exception.o: In function `irq_handle':
+/root/arm/armv8-bare-metal/exception.c:60: undefined reference to `__stack_chk_guard'
+/root/arm/armv8-bare-metal/exception.c:60: undefined reference to `__stack_chk_guard'
+/root/arm/armv8-bare-metal/exception.c:82: undefined reference to `__stack_chk_guard'
+/root/arm/armv8-bare-metal/exception.c:82: undefined reference to `__stack_chk_guard'
+/root/arm/armv8-bare-metal/exception.c:82: undefined reference to `__stack_chk_fail'
+/root/arm/armv8-bare-metal/exception.c:82:(.text+0x444): relocation truncated to fit: R_AARCH64_CALL26 against undefined symbol `__stack_chk_fail'
+Makefile:32: recipe for target 'kernel.elf' failed
+make: *** [kernel.elf] Error 1
+```
+
+## slove bugs
+add -fno-stack-protector in CFLAGS
+````
+CFLAGS =  -mcpu=cortex-a57 -Wall -Wextra -g -fno-stack-protector
+```
+
+## make successfully
+
+```
+root@ubuntu:~/arm/armv8-bare-metal# make 
+# aarch64-linux-gnu-as -mcpu=cortex-a57 -g -c boot.S -o boot.o
+aarch64-linux-gnu-gcc -mcpu=cortex-a57 -Wall -Wextra -g -fno-stack-protector -c boot.S -o boot.o                        # for include header file in assembly
+# aarch64-linux-gnu-as -mcpu=cortex-a57 -g -c vector.S -o vector.o
+aarch64-linux-gnu-gcc -mcpu=cortex-a57 -Wall -Wextra -g -fno-stack-protector -c vector.S -o vector.o                    # for include header file in assembly
+aarch64-linux-gnu-gcc -mcpu=cortex-a57 -Wall -Wextra -g -fno-stack-protector -c exception.c
+aarch64-linux-gnu-gcc -mcpu=cortex-a57 -Wall -Wextra -g -fno-stack-protector -c kernel.c
+aarch64-linux-gnu-gcc -mcpu=cortex-a57 -Wall -Wextra -g -fno-stack-protector -c gic_v3.c
+aarch64-linux-gnu-gcc -mcpu=cortex-a57 -Wall -Wextra -g -fno-stack-protector -c uart.c
+aarch64-linux-gnu-gcc -mcpu=cortex-a57 -Wall -Wextra -g -fno-stack-protector -c psw.c
+aarch64-linux-gnu-gcc -mcpu=cortex-a57 -Wall -Wextra -g -fno-stack-protector -c aarch64.c
+aarch64-linux-gnu-gcc -mcpu=cortex-a57 -Wall -Wextra -g -fno-stack-protector -c timer.c
+aarch64-linux-gnu-ld -T linker.ld linker.ld boot.o vector.o exception.o kernel.o gic_v3.o uart.o psw.o aarch64.o timer.o -o kernel.elf
+aarch64-linux-gnu-objdump -D kernel.elf > kernel.list
+```
+
 # armv8-bare-metal
-*	Purpose
+##	Purpose
 	* It's a bare-metal study in QEMU (-M virt -cpu cortex-a57)
-*	How to run
+##	How to run
 	```
 	# export PATH inclueding your cross compile tool
 	export PATH=$PATH:/home/ryanyao/work/buildroot-2017.11-rc1/output/host/bin
 	make run
 	```
-*	GDB (Terminal 1/2 should be in the same directory.)
+	
+	```
+	root@ubuntu:~/arm/armv8-bare-metal# make run
+make kernel.elf
+make[1]: Entering directory '/root/arm/armv8-bare-metal'
+make[1]: 'kernel.elf' is up to date.
+make[1]: Leaving directory '/root/arm/armv8-bare-metal'
+# qemu-system-aarch64 -machine virt -cpu cortex-a57 -m 128 -serial stdio -nographic -nodefaults -kernel kernel.elf
+# qemu-system-aarch64 -machine virt,gic_version=3 -cpu cortex-a57 -nographic -kernel kernel.elf
+qemu-system-aarch64 -machine virt -cpu cortex-a57 -nographic -kernel kernel.elf
+timer_test
+gic_v3_initialize()
+init_gicd()
+init_gicc()
+CurrentEL = 0x00000000 00000004
+RVBAR_EL1 = 0x00000000 00000000
+VBAR_EL1 = 0x00000000 40000000
+DAIF = 0x00000000 000003C0
+Disable the timer, CNTV_CTL_EL0 = 0x00000000 00000000
+System Frequency: CNTFRQ_EL0 = 0x00000000 03B9ACA0
+Current counter: CNTVCT_EL0 = 0x00000000 000441B0
+Assert Timer IRQ after 1 sec: CNTV_CVAL_EL0 = 0x00000000 03BDEE50
+Enable the timer, CNTV_CTL_EL0 = 0x00000000 00000001
+Enable IRQ, DAIF = 0x00000000 00000340
+
+Exception Handler! (AARCH64_EXC_IRQ_SPX)
+IRQ found: 0x00000000 0000001B
+timer_handler: 
+        Disable the timer, CNTV_CTL_EL0 = 0x00000000 00000000
+        System Frequency: CNTFRQ_EL0 = 0x00000000 03B9ACA0
+        Current counter: CNTVCT_EL0 = 0x00000000 03C0E160
+        Assert Timer IRQ after 0x00000000 00000001 sec(s): CNTV_CVAL_EL0 = 0x00000000 077A8E00
+        Enable the timer, CNTV_CTL_EL0 = 0x00000000 00000001
+
+Exception Handler! (AARCH64_EXC_IRQ_SPX)
+IRQ found: 0x00000000 0000001B
+timer_handler: 
+        Disable the timer, CNTV_CTL_EL0 = 0x00000000 00000000
+        System Frequency: CNTFRQ_EL0 = 0x00000000 03B9ACA0
+        Current counter: CNTVCT_EL0 = 0x00000000 077CB481
+        Assert Timer IRQ after 0x00000000 00000001 sec(s): CNTV_CVAL_EL0 = 0x00000000 0B366121
+        Enable the timer, CNTV_CTL_EL0 = 0x00000000 00000001
+
+Exception Handler! (AARCH64_EXC_IRQ_SPX)
+IRQ found: 0x00000000 0000001B
+timer_handler: 
+        Disable the timer, CNTV_CTL_EL0 = 0x00000000 00000000
+        System Frequency: CNTFRQ_EL0 = 0x00000000 03B9ACA0
+        Current counter: CNTVCT_EL0 = 0x00000000 0B37F163
+        Assert Timer IRQ after 0x00000000 00000001 sec(s): CNTV_CVAL_EL0 = 0x00000000 0EF19E03
+        Enable the timer, CNTV_CTL_EL0 = 0x00000000 00000001
+QEMU: Terminated
+root@ubuntu:~/arm/armv8-bare-metal# 
+	```
+	
+	
+	
+	
+##	GDB (Terminal 1/2 should be in the same directory.)
 	```
 	Terminal 1:
 		qemu-system-aarch64 -machine virt -cpu cortex-a57 -kernel kernel.elf -nographic -S -s
@@ -15,7 +116,7 @@
 		aarch64-linux-gnu-gdb kernel.elf --tui
 		target remote :1234
 	```
-*	Timer IRQ works. It assert Timer_Handler() every 1 sec.
+##	Timer IRQ works. It assert Timer_Handler() every 1 sec.
 	```
 	timer_test
 	gic_v3_initialize()
